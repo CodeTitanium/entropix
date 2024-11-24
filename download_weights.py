@@ -3,6 +3,7 @@ import tyro
 import torch
 import ml_dtypes
 import jax.numpy as jnp
+import numpy as np
 from pathlib import Path
 
 from transformers import AutoModelForCausalLM
@@ -51,12 +52,15 @@ def translate_key(in_key: str):
 
 
 def reverse_permute(tensor: torch.Tensor, n_heads: int = 32, dim1: int = 4096, dim2: int = 4096) -> torch.Tensor:
+    # Convert to numpy array first
+    param = tensor.detach().cpu().numpy()
     # Calculate the size for each head dimension
     head_dim = dim1 // n_heads // 2
-    # Reshape using a tuple of dimensions
-    reshaped = tensor.view((n_heads, 2, head_dim, dim2))
+    # Reshape using numpy reshape
+    reshaped = param.reshape(n_heads, 2, head_dim, dim2)
     # Transpose and reshape back
-    return reshaped.transpose(1, 2).reshape(dim1, dim2)
+    transposed = np.transpose(reshaped, (0, 2, 1, 3))
+    return torch.tensor(transposed.reshape(dim1, dim2))
 
 
 def fixed_get_imports(filename: str | os.PathLike) -> list[str]:
@@ -80,9 +84,6 @@ def main(model_id: str, out_dir: Path):
             if not out_key:
                 continue
 
-            # Convert the parameter to numpy
-            param = param.detach().cpu().numpy()
-
             # Handle special permutation cases for attention weights
             if key == 'model.layers.0.self_attn.q_proj.weight':
                 param = reverse_permute(param, n_heads=32, dim1=2048, dim2=2048)   # 1B model
@@ -91,10 +92,11 @@ def main(model_id: str, out_dir: Path):
             elif key == 'model.layers.0.self_attn.v_proj.weight':
                 param = reverse_permute(param, n_heads=8, dim1=512, dim2=2048)   # 1B model
 
-            # Save the parameter
+            # Convert to numpy and save
+            param_np = param.detach().cpu().numpy()
             out_path = out_dir / out_key
             print(f"Writing {key} as {out_key} to {out_path}")
-            jnp.save(str(out_path), param.astype(ml_dtypes.bfloat16))
+            jnp.save(str(out_path), param_np.astype(ml_dtypes.bfloat16))
 
 
 if __name__ == "__main__":
