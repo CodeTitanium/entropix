@@ -66,7 +66,7 @@ def main(weights_path: Path = DEFAULT_WEIGHTS_PATH.joinpath('1B-Instruct')):
   xfmr_weights, mesh = load_weights(weights_path.absolute(), model_params)
   tokenizer = Tokenizer('entropix/tokenizer.model')
   xfmr_fn = jax.jit(xfmr, static_argnames=("model_params",))
-  sample_fn = jax.jit(sample, static_argnames=("cfg",))
+  sample_fn = jax.jit(sample, static_argnames=("config",))
 
   # Create the batch of tokens
   def generate(xfmr_weights, model_params, tokens):
