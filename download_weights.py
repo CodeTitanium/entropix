@@ -54,7 +54,6 @@ def reverse_permute(tensor: torch.Tensor, n_heads: int = 32, dim1:int = 4096, di
     return tensor.view(n_heads, 2, dim1 // n_heads // 2, dim2).transpose(1, 2).reshape(dim1, dim2)
 
 
-
 def fixed_get_imports(filename: str | os.PathLike) -> list[str]:
     """Work around for https://huggingface.co/microsoft/phi-1_5/discussions/72."""
     if not str(filename).endswith("/modeling_deepseek.py"):
@@ -65,53 +64,32 @@ def fixed_get_imports(filename: str | os.PathLike) -> list[str]:
 
 
 def main(model_id: str, out_dir: Path):
-    t_paths_candidates = [
-        Path.home() / '.hf_token',
-        Path.home() / '.cache' / 'huggingface' / 'token'
-    ]
-    token = None
-    for t_path in t_paths_candidates:
-        if t_path.exists():
-            token = t_path.read_text().strip()
-            break
-    if not out_dir.exists():
+    with patch('transformers.dynamic_module_utils.get_imports', fixed_get_imports):
+        model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.float16, device_map=None)
+        params = dict(model.named_parameters())
         out_dir.mkdir(parents=True, exist_ok=True)
 
+        for key, param in params.items():
+            print(f" {key}: param.shape={param.shape}")
+            out_key = translate_key(key)
+            if not out_key:
+                continue
 
-    with patch("transformers.dynamic_module_utils.get_imports", fixed_get_imports):
-      token = t_path.read_text().strip()
-      hf_model = AutoModelForCausalLM.from_pretrained(model_id,torch_dtype=torch.bfloat16, offload_folder="/tmp/offload", token=token)
-      with torch.no_grad():
-        state_dict = hf_model.state_dict()
-        for hf_name, param in state_dict.items():
-            print(f' {hf_name}: {param.shape=}')
-            name = translate_key(hf_name)
-            if name.endswith('wq.weight'):
-                #param = reverse_permute(param, n_heads=32, dim1=2048, dim2=2048)  # 1B
-                #param = reverse_permute(param, n_heads=24, dim1=3072, dim2=3072)  # 3B
-                #param = reverse_permute(param, n_heads=32, dim1=4096, dim2=4096)  # 7B
-                param = reverse_permute(param, n_heads=64, dim1=8192, dim2=8192)   # 70B
-                #param = reverse_permute(param, n_heads=96, dim1=12288, dim2=12288)   # 123B
-                #param = reverse_permute(param, n_heads=128, dim1=16384, dim2=16384) # 405B
-                #param = reverse_permute(param, n_heads=128, dim1=12288, dim2=12288) # DSV2
-                #param = reverse_permute(param, n_heads=64, dim1=12288, dim2=12288) # Commandr+
-                #param = reverse_permute(param, n_heads=48, dim1=6144, dim2=6144)    # Mixtral8x22B
-            elif name.endswith('wk.weight'): #wk.weight
-                #param = reverse_permute(param, n_heads=8, dim1=512, dim2=2048)  # 1B
-                #param = reverse_permute(param, n_heads=8, dim1=1024, dim2=3072)  # 3B
-                #param = reverse_permute(param, n_heads=8, dim1=1024, dim2=4096)  # 7B
-                param = reverse_permute(param, n_heads=8, dim1=1024, dim2=8192)   # 70B
-                #param = reverse_permute(param, n_heads=8, dim1=1024, dim2=12288)   # 123B
-                #param = reverse_permute(param, n_heads=8, dim1=1024, dim2=16384)  # 405B
-                #param = reverse_permute(param, n_heads=128, dim1=12288, dim2=12288)  # DSV2
-                #param = reverse_permute(param, n_heads=8, dim1=1024, dim2=12288)  # Commandr+
-                #param = reverse_permute(param, n_heads=8, dim1=1024, dim2=6144)    # Mixtral8x22B
-            else:
-                pass
-            bf16_np_out = param.cpu().view(dtype=torch.uint16).numpy().view(ml_dtypes.bfloat16)
-            bf16_out = jnp.asarray(bf16_np_out, dtype=jnp.bfloat16).reshape(*param.shape)
-            print(f'Writing {hf_name} as {name} to {out_dir}/{name}.npy')
-            jnp.save(f'{out_dir}/{name}.npy', bf16_out)
+            # Convert the parameter to numpy
+            param = param.detach().cpu().numpy()
+
+            # Handle special permutation cases for attention weights
+            if key == 'model.layers.0.self_attn.q_proj.weight':
+                param = reverse_permute(param, n_heads=32, dim1=2048, dim2=2048)   # 1B model
+            elif key == 'model.layers.0.self_attn.k_proj.weight':
+                param = reverse_permute(param, n_heads=8, dim1=512, dim2=2048)   # 1B model
+            elif key == 'model.layers.0.self_attn.v_proj.weight':
+                param = reverse_permute(param, n_heads=8, dim1=512, dim2=2048)   # 1B model
+
+            # Save the parameter
+            out_path = out_dir / out_key
+            print(f"Writing {key} as {out_key} to {out_path}")
+            jnp.save(str(out_path), param.astype(ml_dtypes.bfloat16))
 
 
 if __name__ == "__main__":

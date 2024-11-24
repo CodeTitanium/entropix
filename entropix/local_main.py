@@ -7,7 +7,7 @@ import jax
 import jax.numpy as jnp
 import tyro
 
-from entropix.config import LLAMA_1B_PARAMS
+from entropix.config import MODEL_CONFIGS, create_model_params
 from entropix.kvcache import KVCache
 from entropix.model import xfmr
 from entropix.sampler import SamplerConfig, sample
@@ -63,7 +63,7 @@ def build_attn_mask(seqlen: int, start_pos: int) -> jax.Array:
 
 def main(weights_path: Path = DEFAULT_WEIGHTS_PATH.joinpath('1B-Instruct')):
 #def main(weights_path: Path = DEFAULT_WEIGHTS_PATH.joinpath('70B-Nemotron-Instruct')):
-  model_params = LLAMA_1B_PARAMS
+  model_params = create_model_params(MODEL_CONFIGS["1B"])
   xfmr_weights = load_weights(weights_path.absolute(), n_layers=model_params.n_layers)
   tokenizer = Tokenizer('entropix/tokenizer.model')
   xfmr_fn = jax.jit(xfmr, static_argnames=("model_params",))
