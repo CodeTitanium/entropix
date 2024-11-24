@@ -63,6 +63,32 @@ Today Date: {formatted_date()}
 
     return prompt
 
+def prompt6():
+    return """<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+Cutting Knowledge Date: December 2023
+Today Date: 23 July 2024
+
+You are a world-class AI system, capable of complex reasoning and reflection.<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+Sort the numbers from highest to lowest: 9.1, 9.8, 9.11, 9.9, 9.12<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+"""
+
+def p4o():
+    return """<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+Cutting Knowledge Date: December 2023
+Today Date: 23 July 2024
+
+You are a world-class AI system, capable of complex reasoning and reflection.<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+Think carefully in a step-by-step manner. Can you write a python agent that generates passwords with modern best practices?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+"""
+
+def create_prompts_from_csv(csv_path: str):
+    # Placeholder function since we're not using CSV prompts right now
+    return [prompt6()]
+
 # class ToolProcessor:
 #     def __init__(self):
 #         pass

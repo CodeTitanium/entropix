@@ -95,21 +95,9 @@ def main(weights_path: Path = DEFAULT_WEIGHTS_PATH.joinpath('1B-Instruct')):
       if jnp.isin(next_token, stop).any():
         break
 
-  prompt = """<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-
-Cutting Knowledge Date: December 2023
-Today Date: 23 July 2024
-
-You are a world-class AI system, capable of complex reasoning and reflection.<|eot_id|><|start_header_id|>user<|end_header_id|>
-
-Sort the numbers from highest to lowest: 9.1, 9.8, 9.11, 9.9, 9.12<|eot_id|><|start_header_id|>assistant<|end_header_id|>
-
-"""
-  #Think carefully in a step-by-step manner. Can you write a python agent that generates passwords with modern best practices?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
-  #Think carefully in a step-by-step manner. Oliver picks 44 kiwis on Friday. Then he picks 58 kiwis on Saturday. On Sunday, he picks double the number of kiwis he did on Friday, but five of them were a bit smaller than average. How many kiwis does Oliver have?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
-  #Think carefully in a step-by-step manner. which number is larger, 9.9 or 9.11?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
-  print(prompt)
-  tokens = tokenizer.encode(prompt,  bos=False, eos=False, allowed_special='all')
+  # Use prompt6 for testing
+  prompt = prompt6()
+  tokens = tokenizer.encode(prompt)
   generate(xfmr_weights, model_params, tokens)
 
 
