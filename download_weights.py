@@ -50,8 +50,13 @@ def translate_key(in_key: str):
     return f'{out_key}.weight'
 
 
-def reverse_permute(tensor: torch.Tensor, n_heads: int = 32, dim1:int = 4096, dim2: int = 4096) -> torch.Tensor:
-    return tensor.view(n_heads, 2, dim1 // n_heads // 2, dim2).transpose(1, 2).reshape(dim1, dim2)
+def reverse_permute(tensor: torch.Tensor, n_heads: int = 32, dim1: int = 4096, dim2: int = 4096) -> torch.Tensor:
+    # Calculate the size for each head dimension
+    head_dim = dim1 // n_heads // 2
+    # Reshape using a tuple of dimensions
+    reshaped = tensor.view((n_heads, 2, head_dim, dim2))
+    # Transpose and reshape back
+    return reshaped.transpose(1, 2).reshape(dim1, dim2)
 
 
 def fixed_get_imports(filename: str | os.PathLike) -> list[str]:
