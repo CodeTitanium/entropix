@@ -77,6 +77,12 @@ def fixed_get_imports(filename: str | os.PathLike) -> list[str]:
 def main(model_id: str, out_dir: Path):
     with patch('transformers.dynamic_module_utils.get_imports', fixed_get_imports):
         model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.float16, device_map=None)
+        
+        # Debug: Print all available parameters
+        print("\nAll available parameters:")
+        for name in model.state_dict().keys():
+            print(f"Parameter: {name}")
+            
         params = dict(model.named_parameters())
         out_dir.mkdir(parents=True, exist_ok=True)
 
