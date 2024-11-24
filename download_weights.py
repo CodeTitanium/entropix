@@ -44,10 +44,12 @@ def translate_key(in_key: str):
             out_key = 'norm'
         else:
             print(f"Don't know how to handle {in_key=}")
+            return None
     elif out_key == 'lm_head':
         out_key = 'output'
     else:
         print(f"Don't know how to handle {in_key=}")
+        return None
     return f'{out_key}.weight'
 
 
@@ -78,11 +80,24 @@ def main(model_id: str, out_dir: Path):
         params = dict(model.named_parameters())
         out_dir.mkdir(parents=True, exist_ok=True)
 
+        # First pass: Check if we have all required keys
+        required_keys = {
+            'tok_embeddings.weight': False,
+            'norm.weight': False,
+            'output.weight': False
+        }
+        
         for key, param in params.items():
             print(f" {key}: param.shape={param.shape}")
             out_key = translate_key(key)
             if not out_key:
+                print(f"Skipping {key} - no translation available")
                 continue
+                
+            # Track if we found required keys
+            base_key = out_key.replace('.weight', '')
+            if base_key in ['tok_embeddings', 'norm', 'output']:
+                required_keys[out_key] = True
 
             # Handle special permutation cases for attention weights
             if key == 'model.layers.0.self_attn.q_proj.weight':
@@ -97,6 +112,11 @@ def main(model_id: str, out_dir: Path):
             out_path = out_dir / out_key
             print(f"Writing {key} as {out_key} to {out_path}")
             jnp.save(str(out_path), param_np.astype(ml_dtypes.bfloat16))
+        
+        # Check if we're missing any required keys
+        missing_keys = [k for k, found in required_keys.items() if not found]
+        if missing_keys:
+            raise ValueError(f"Missing required weight files: {missing_keys}")
 
 
 if __name__ == "__main__":
