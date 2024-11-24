@@ -83,7 +83,8 @@ def main(model_id: str, out_dir: Path):
         for name in model.state_dict().keys():
             print(f"Parameter: {name}")
             
-        params = dict(model.named_parameters())
+        # Get all parameters including buffers
+        params = {k: v for k, v in model.state_dict().items() if k.endswith('.weight')}
         out_dir.mkdir(parents=True, exist_ok=True)
 
         # First pass: Check if we have all required keys
