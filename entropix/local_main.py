@@ -62,9 +62,8 @@ def build_attn_mask(seqlen: int, start_pos: int) -> jax.Array:
   return mask
 
 def main(weights_path: Path = DEFAULT_WEIGHTS_PATH.joinpath('1B-Instruct')):
-#def main(weights_path: Path = DEFAULT_WEIGHTS_PATH.joinpath('70B-Nemotron-Instruct')):
   model_params = create_model_params(MODEL_CONFIGS["1B"])
-  xfmr_weights = load_weights(weights_path.absolute(), n_layers=model_params.n_layers)
+  xfmr_weights, mesh = load_weights(weights_path.absolute(), model_params)
   tokenizer = Tokenizer('entropix/tokenizer.model')
   xfmr_fn = jax.jit(xfmr, static_argnames=("model_params",))
   sample_fn = jax.jit(sample, static_argnames=("cfg",))
